@@ -1,0 +1,41 @@
+image: google/cloud-sdk:alpine
+
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  TRIVY_VERSION:
+    description: Aqua Trivy Version 
+    value: "0.43.1"
+  TAG:
+    description: Tag for docker image
+    value: latest
+  AIRFLOW_VERSION: $CI_COMMIT_TAG
+stages:
+  - build
+
+build:
+  tags:
+    - bi
+  stage: build
+  image: google/cloud-sdk:alpine
+  services:
+    - name: docker:19.03-dind
+  before_script:
+    - echo "$GCP_SA_SECRET" | base64 -d > /root/sa.json
+    - gcloud auth activate-service-account $GCP_SA_EMAIL --key-file /root/sa.json
+    - gcloud auth configure-docker $GCP_ARTIFACT_REGISTRY_HOST
+  script:
+    - docker build --build-arg BASE_AIRFLOW_IMAGE="apache/airflow:${AIRFLOW_VERSION}" --build-arg AIRFLOW_VERSION="${AIRFLOW_VERSION}" --tag $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG .
+    - docker tag $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG  $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$CI_COMMIT_TAG
+    - wget https://github.com/aquasecurity/trivy/releases/download/v$TRIVY_VERSION/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz
+    - tar xzvf trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz
+    - ./trivy image --no-progress --timeout 15m --security-checks vuln --output scanning-report.json $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
+    - ./trivy image --ignore-unfixed --exit-code 1 --no-progress --timeout 15m --severity CRITICAL --security-checks vuln $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
+    - docker push $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
+    - docker push $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$CI_COMMIT_TAG
+  artifacts:
+    reports:
+      container_scanning: scanning-report.json
+  only:
+    - tags
