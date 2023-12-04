@@ -52,6 +52,6 @@ ADD pip.conf /etc/xdg/pip/pip.conf
 USER ${AIRFLOW_UID}
 
 RUN pip install --no-cache-dir "apache-airflow==${AIRFLOW_VERSION}" mpi4py apache-airflow-providers-google apache-airflow-providers-airbyte --upgrade
-RUN pip unninstall cryptography==41.0.5 && pip install --no-cache-dir cryptography==41.0.7 --upgrade
+RUN pip uninstall cryptography==41.0.5 && pip install --no-cache-dir cryptography==41.0.7 --upgrade
 RUN pip install --no-cache-dir pyarrow==14.0.1 --upgrade
 RUN pip install --upgrade pip
