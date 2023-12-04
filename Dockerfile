@@ -47,6 +47,9 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
+RUN pip install cryptography --upgrade
+RUN pip install pyarrow --upgrade
+
 ADD pip.conf /etc/xdg/pip/pip.conf
 
 USER ${AIRFLOW_UID}
