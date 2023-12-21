@@ -1,12 +1,18 @@
-image: google/cloud-sdk:alpine
+default:
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - docker inf
 
 variables:
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: ""
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_TLS_VERIFY: 1
+  DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
   TRIVY_VERSION:
     description: Aqua Trivy Version 
-    value: "0.43.1"
+    value: "0.48.1"
   TAG:
     description: Tag for docker image
     value: latest
@@ -19,8 +25,6 @@ build:
     - bi
   stage: build
   image: google/cloud-sdk:alpine
-  services:
-    - name: docker:19.03-dind
   before_script:
     - echo "$GCP_SA_SECRET" | base64 -d > /root/sa.json
     - gcloud auth activate-service-account $GCP_SA_EMAIL --key-file /root/sa.json
