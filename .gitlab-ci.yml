@@ -35,7 +35,7 @@ build:
     - wget https://github.com/aquasecurity/trivy/releases/download/v$TRIVY_VERSION/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz
     - tar xzvf trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz
     - ./trivy image --no-progress --timeout 15m --scanners vuln --output scanning-report.json $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
-    #- ./trivy image --ignore-unfixed --exit-code 1 --no-progress --timeout 15m --severity CRITICAL --scanners vuln $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
+    - ./trivy image --ignore-unfixed --exit-code 1 --no-progress --timeout 15m --severity CRITICAL --scanners vuln $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
     - docker push $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
     - docker push $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$CI_COMMIT_TAG
   artifacts:

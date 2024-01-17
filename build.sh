@@ -11,7 +11,7 @@ catch() {
 }
 trap 'catch $? $LINENO' EXIT
 
-airflow_version="2.7.3"
+airflow_version="2.8.0"
 
 # docker build . \
 #   --pull \
@@ -31,4 +31,3 @@ docker push europe-central2-docker.pkg.dev/fast-bi-common/airflow/airflow-gcp:${
 ##
 ##pip install --index-url https://europe-central2-python.pkg.dev/fast-bi-common/bi-platform-pypi-packages/simple/ fast-bi-dbt-runner==0.0.1
 
-docker buildx build . --tag ojojjojj:latest --platform linux/amd64
