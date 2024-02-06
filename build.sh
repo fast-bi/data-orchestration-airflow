@@ -11,7 +11,7 @@ catch() {
 }
 trap 'catch $? $LINENO' EXIT
 
-airflow_version="2.8.0"
+airflow_version="2.8.1"
 
 # docker build . \
 #   --pull \
