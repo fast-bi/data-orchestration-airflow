@@ -20,7 +20,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
 
 USER 0
 
-ARG CLOUD_SDK_VERSION=455.0.0
+ARG CLOUD_SDK_VERSION=467.0.0
 ENV GCLOUD_HOME=/opt/google-cloud-sdk
 
 ENV PATH="${GCLOUD_HOME}/bin/:${PATH}"
@@ -51,7 +51,7 @@ ADD pip.conf /etc/xdg/pip/pip.conf
 
 USER ${AIRFLOW_UID}
 
-RUN pip install --no-cache-dir "apache-airflow==${AIRFLOW_VERSION}" mpi4py apache-airflow-providers-google apache-airflow-providers-airbyte --upgrade
+RUN pip install --no-cache-dir "apache-airflow==${AIRFLOW_VERSION}" mpi4py apache-airflow-providers-google apache-airflow-providers-airbyte connexion[swagger-ui] --upgrade
 RUN pip install --no-cache-dir cryptography==41.0.7 --upgrade
 RUN pip install --no-cache-dir pyarrow==14.0.1 --upgrade
 RUN pip install --upgrade pip
