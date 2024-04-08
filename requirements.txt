@@ -3,8 +3,8 @@ apache-airflow[statsd]
 apache-airflow-providers-google
 apache-airflow-providers-airbyte
 apache-airflow-providers-dbt-cloud
-acryl-datahub-airflow-plugin[plugin-v2]
 apache-airflow-providers-openlineage
+acryl-datahub-airflow-plugin[plugin-v2]==0.13.1.3rc10
 connexion[swagger-ui]
 cryptography
 pyarrow
