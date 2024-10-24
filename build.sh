@@ -11,7 +11,8 @@ catch() {
 }
 trap 'catch $? $LINENO' EXIT
 
-airflow_version="2.9.2"
+airflow_version="2.10.2-python3.11"
+airflow_version_short=$(echo $airflow_version | cut -d '-' -f 1)
 
 # docker build . \
 #   --pull \
@@ -23,9 +24,9 @@ airflow_version="2.9.2"
 docker buildx build . \
   --pull \
   --build-arg BASE_AIRFLOW_IMAGE="apache/airflow:${airflow_version}" --build-arg AIRFLOW_VERSION="${airflow_version}" \
-  --tag europe-central2-docker.pkg.dev/fast-bi-common/airflow/airflow-gcp:${airflow_version} \
+  --tag europe-central2-docker.pkg.dev/fast-bi-common/airflow/airflow-gcp:${airflow_version_short} \
   --platform linux/amd64 \
-  -- push
+  --push
 
 ##
 ##pip install --index-url https://europe-central2-python.pkg.dev/fast-bi-common/bi-platform-pypi-packages/simple/ fast-bi-dbt-runner==0.0.1

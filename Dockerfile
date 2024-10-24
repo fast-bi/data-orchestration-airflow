@@ -20,7 +20,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
 
 USER 0
 
-ARG CLOUD_SDK_VERSION=480.0.0
+ARG CLOUD_SDK_VERSION=498.0.0
 ENV GCLOUD_HOME=/opt/google-cloud-sdk
 
 ENV PATH="${GCLOUD_HOME}/bin/:${PATH}"
@@ -42,7 +42,7 @@ RUN DOWNLOAD_URL="https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/goo
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
-         build-essential libopenmpi-dev libsasl2-dev \
+         build-essential libopenmpi-dev libsasl2-dev git \
   && apt-get autoremove -yqq --purge \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
