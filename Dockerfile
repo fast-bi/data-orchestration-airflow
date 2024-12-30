@@ -17,9 +17,8 @@
 FROM google/cloud-sdk:slim AS gcloud-sdk
 
 # Main stage
-ARG BASE_AIRFLOW_IMAGE=apache/airflow:2.10.4-python3.11
-ARG AIRFLOW_VERSION
-FROM ${BASE_AIRFLOW_IMAGE}
+ARG AIRFLOW_VERSION=2.10.4
+FROM apache/airflow:${AIRFLOW_VERSION}-python3.11
 
 SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
 
