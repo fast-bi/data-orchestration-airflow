@@ -11,7 +11,7 @@ catch() {
 }
 trap 'catch $? $LINENO' EXIT
 
-airflow_version='2.10.3-python3.11'
+airflow_version='2.10.4-python3.11'
 airflow_version_short=$(echo $airflow_version | cut -d '-' -f 1)
 
 # docker build . \

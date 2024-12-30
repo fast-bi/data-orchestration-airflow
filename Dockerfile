@@ -62,6 +62,16 @@ USER ${AIRFLOW_UID}
 
 COPY requirements.txt /home/airflow
 
-RUN pip install --no-cache-dir -r /home/airflow/requirements.txt
+# Add before pip install commands
+ENV PIP_DEFAULT_TIMEOUT=100 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
 
-RUN pip install --upgrade pip
+# Combine pip commands and add optimization flags
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir \
+    --compile \
+    --use-pep517 \
+    --no-deps \
+    -r /home/airflow/requirements.txt && \
+    pip check
