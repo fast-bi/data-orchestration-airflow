@@ -72,6 +72,5 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir \
     --compile \
     --use-pep517 \
-    --no-deps \
     -r /home/airflow/requirements.txt && \
     pip check
