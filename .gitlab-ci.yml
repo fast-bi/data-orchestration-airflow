@@ -47,11 +47,12 @@ build_job:
     
     # Build with cache
     - |
+      echo "Using Airflow version: ${AIRFLOW_VERSION}"
       docker build \
-        --build-arg AIRFLOW_VERSION="${AIRFLOW_VERSION}" \
-        --cache-from $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:latest \
+        --build-arg "AIRFLOW_VERSION=${AIRFLOW_VERSION}" \
+        --cache-from "$GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:latest" \
         --build-arg BUILDKIT_INLINE_CACHE=1 \
-        --tag $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG \
+        --tag "$GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG" \
         .
     
     # Tag images
