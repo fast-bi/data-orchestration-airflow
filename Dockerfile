@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-ARG BASE_AIRFLOW_IMAGE=apache/airflow:2.10.3-python3.11
+ARG BASE_AIRFLOW_IMAGE=apache/airflow:2.10.4-python3.11
 ARG AIRFLOW_VERSION
 FROM ${BASE_AIRFLOW_IMAGE}
 
@@ -20,7 +20,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
 
 USER 0
 
-ARG CLOUD_SDK_VERSION=501.0.0
+ARG CLOUD_SDK_VERSION=504.0.1
 ENV GCLOUD_HOME=/opt/google-cloud-sdk
 
 ENV PATH="${GCLOUD_HOME}/bin/:${PATH}"

@@ -6,4 +6,5 @@ connexion[swagger-ui]
 cryptography
 pyarrow
 mpi4py
-fast-bi-dbt-runner
+fast-bi-dbt-runner==2024.0.2.13
+dbt-bigquery==1.8.3
