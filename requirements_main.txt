@@ -1,0 +1,8 @@
+# Main packages
+apache-airflow[statsd]==2.10.4
+apache-airflow-providers-google==12.0.0
+apache-airflow-providers-airbyte==5.0.0
+apache-airflow-providers-dbt-cloud==4.0.0
+connexion[swagger-ui]==2.14.2
+cryptography==44.0.0
+pyarrow==18.1.0

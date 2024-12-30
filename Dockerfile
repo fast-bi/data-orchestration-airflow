@@ -58,19 +58,52 @@ RUN mkdir -p /etc/lsyncd && \
     chown -R airflow:root /etc/lsyncd && \
     chmod 644 /etc/lsyncd/lsyncd.conf.lua
 
-USER ${AIRFLOW_UID}
+USER airflow
 
-COPY requirements.txt /home/airflow
+# Copy both files
+COPY requirements_main.txt requirements_fastbi.txt /home/airflow/
 
-# Add before pip install commands
-ENV PIP_DEFAULT_TIMEOUT=100 \
+# Add pip configuration
+ENV PIP_DEFAULT_TIMEOUT=1000 \
+    PYTHON_SETUPTOOLS_TIMEOUT=1000 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Combine pip commands and add optimization flags
-RUN pip install --upgrade pip && \
+# Stage 1 Install main packages
+RUN pip install --upgrade pip wheel && \
     pip install --no-cache-dir \
-    --compile \
-    --use-pep517 \
-    -r /home/airflow/requirements.txt && \
+        --compile \
+        --use-pep517 \
+        --only-binary :all: \
+        -r /home/airflow/requirements_main.txt && \
     pip check
+
+# Stage 2 Install fastbi prereq packages
+RUN pip install --no-cache-dir \
+        --compile \
+        --use-pep517 \
+        -r /home/airflow/requirements_fastbi.txt && \
+    pip check
+
+USER 0
+
+# Aggressive cleanup
+RUN apt-get clean && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /root/.cache && \
+    rm -rf /tmp/* && \
+    rm -rf /var/tmp/* && \
+    rm -rf /usr/share/doc && \
+    rm -rf /usr/share/man && \
+    rm -rf /usr/share/locale && \
+    rm -rf /var/log/* && \
+    rm -rf /home/airflow/.cache && \
+    find / -type f -name '*.pyc' -delete && \
+    find / -type d -name '__pycache__' -exec rm -rf {} + && \
+    find / -type f -name '*.log' -delete
+
+USER airflow
+RUN pip check
