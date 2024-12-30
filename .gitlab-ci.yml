@@ -33,8 +33,8 @@ build_job:
   script:
     - docker build --build-arg BASE_AIRFLOW_IMAGE="apache/airflow:${AIRFLOW_VERSION}" --build-arg AIRFLOW_VERSION="${AIRFLOW_VERSION}" --tag $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG .
     - docker tag $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG  $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$CI_COMMIT_TAG
-    - ./trivy image --no-progress --timeout 45m --scanners vuln --output scanning-report.json $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
-    - ./trivy image --ignore-unfixed --exit-code 1 --no-progress --timeout 45m --severity CRITICAL --scanners vuln $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
+    - ./trivy image --db-repository public.ecr.aws/aquasecurity/trivy-db --java-db-repository public.ecr.aws/aquasecurity/trivy-java-db --no-progress --timeout 45m --output scanning-report.json $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
+    - ./trivy image --db-repository public.ecr.aws/aquasecurity/trivy-db --java-db-repository public.ecr.aws/aquasecurity/trivy-java-db --ignore-unfixed --exit-code 1 --no-progress --timeout 45m --severity CRITICAL $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG 
     - docker push $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
     - docker push $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$CI_COMMIT_TAG
   artifacts:
