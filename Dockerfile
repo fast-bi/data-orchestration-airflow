@@ -12,39 +12,40 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# First stage: Google Cloud SDK
-FROM google/cloud-sdk:slim AS gcloud-sdk
-
-# Main stage
+ARG BASE_AIRFLOW_IMAGE=apache/airflow:2.10.4-python3.11
 ARG AIRFLOW_VERSION
-FROM apache/airflow:${AIRFLOW_VERSION}-python3.11
+FROM ${BASE_AIRFLOW_IMAGE}
 
 SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
 
 USER 0
 
-# Set up Google Cloud SDK
+ARG CLOUD_SDK_VERSION=501.0.0
 ENV GCLOUD_HOME=/opt/google-cloud-sdk
+
 ENV PATH="${GCLOUD_HOME}/bin/:${PATH}"
 
-# Copy Google Cloud SDK from the first stage
-COPY --from=gcloud-sdk /google-cloud-sdk ${GCLOUD_HOME}
+RUN DOWNLOAD_URL="https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${CLOUD_SDK_VERSION}-linux-x86_64.tar.gz" \
+    && TMP_DIR="$(mktemp -d)" \
+    && curl -fL "${DOWNLOAD_URL}" --output "${TMP_DIR}/google-cloud-sdk.tar.gz" \
+    && mkdir -p "${GCLOUD_HOME}" \
+    && tar xzf "${TMP_DIR}/google-cloud-sdk.tar.gz" -C "${GCLOUD_HOME}" --strip-components=1 \
+    && "${GCLOUD_HOME}/install.sh" \
+       --bash-completion=false \
+       --path-update=false \
+       --usage-reporting=false \
+       --additional-components alpha beta kubectl \
+       --quiet \
+    && rm -rf "${TMP_DIR}" \
+    && rm -rf "${GCLOUD_HOME}/.install/.backup/" \
+    && gcloud --version
 
-# Install additional gcloud components
-RUN gcloud components install alpha beta kubectl --quiet
-
-# Install system dependencies
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        build-essential \
-        libopenmpi-dev \
-        libsasl2-dev \
-        git \
-        lsyncd \
-    && apt-get autoremove -yqq --purge \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+  && apt-get install -y --no-install-recommends \
+         build-essential libopenmpi-dev libsasl2-dev git lsyncd \
+  && apt-get autoremove -yqq --purge \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
 
 # Add fast-bi-dbt-runner config
 ADD pip.conf /etc/xdg/pip/pip.conf
@@ -59,7 +60,8 @@ RUN mkdir -p /etc/lsyncd && \
 
 USER ${AIRFLOW_UID}
 
-# Install Python dependencies
 COPY requirements.txt /home/airflow
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r /home/airflow/requirements.txt
+
+RUN pip install --no-cache-dir -r /home/airflow/requirements.txt
+
+RUN pip install --upgrade pip

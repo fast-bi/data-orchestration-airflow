@@ -8,12 +8,10 @@ variables:
   DOCKER_TLS_CERTDIR: "/certs"
   DOCKER_TLS_VERIFY: 1
   DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
-  DOCKER_BUILDKIT: 1  # Enable BuildKit for better performance
   TAG:
     description: Tag for docker image
     value: latest
   AIRFLOW_VERSION: $CI_COMMIT_TAG
-
 stages:
   - build
 
@@ -23,53 +21,22 @@ build_job:
   stage: build
   image: google/cloud-sdk:alpine
   before_script:
-    # Debug information
-    - echo "Building Airflow version ${AIRFLOW_VERSION}"
-    
-    # GCP Authentication
     - echo "$GCP_SA_SECRET" | base64 -d > /root/sa.json
     - gcloud auth activate-service-account --key-file /root/sa.json
     - export GOOGLE_APPLICATION_CREDENTIALS="/root/sa.json"
     - gcloud auth configure-docker $GCP_ARTIFACT_REGISTRY_HOST
-    
-    # Install required tools
-    - apk add --no-cache docker jq
-    
-    # Setup Trivy
+    - apk add jq
     - TRIVY_LATEST_VERSION=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | jq -r '.tag_name' | sed 's/v//g')
     - echo "Use Trivy version - $TRIVY_LATEST_VERSION"
     - wget https://github.com/aquasecurity/trivy/releases/download/v$TRIVY_LATEST_VERSION/trivy_${TRIVY_LATEST_VERSION}_Linux-64bit.tar.gz
     - tar xzvf trivy_${TRIVY_LATEST_VERSION}_Linux-64bit.tar.gz
   script:
-    # Check if AIRFLOW_VERSION is set
-    - |
-      if [ -z "${AIRFLOW_VERSION}" ]; then
-        echo "Error: AIRFLOW_VERSION is not set"
-        exit 1
-      fi
-    
-    # Pull cache image if it exists
-    - |
-      docker pull $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:latest || true
-    
-    # Build with cache
-    - |
-      docker build \
-        --build-arg AIRFLOW_VERSION="${AIRFLOW_VERSION}" \
-        --cache-from "$GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:latest" \
-        --build-arg BUILDKIT_INLINE_CACHE=1 \
-        --tag "$GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG" \
-        .
-    # Tag images
-    - docker tag $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:${AIRFLOW_VERSION}
-    
-    # Security scan
+    - docker build --build-arg BASE_AIRFLOW_IMAGE="apache/airflow:${AIRFLOW_VERSION}" --build-arg AIRFLOW_VERSION="${AIRFLOW_VERSION}" --tag $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG .
+    - docker tag $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG  $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$CI_COMMIT_TAG
     - ./trivy image --no-progress --timeout 45m --scanners vuln --output scanning-report.json $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
     - ./trivy image --ignore-unfixed --exit-code 1 --no-progress --timeout 45m --severity CRITICAL --scanners vuln $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
-    
-    # Push images
     - docker push $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG
-    - docker push $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:${AIRFLOW_VERSION}
+    - docker push $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$CI_COMMIT_TAG
   artifacts:
     reports:
       container_scanning: scanning-report.json
