@@ -20,7 +20,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
 
 USER 0
 
-ARG CLOUD_SDK_VERSION=501.0.0
+ARG CLOUD_SDK_VERSION=504.0.1
 ENV GCLOUD_HOME=/opt/google-cloud-sdk
 
 ENV PATH="${GCLOUD_HOME}/bin/:${PATH}"
