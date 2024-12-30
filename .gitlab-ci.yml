@@ -41,20 +41,25 @@ build_job:
     - wget https://github.com/aquasecurity/trivy/releases/download/v$TRIVY_LATEST_VERSION/trivy_${TRIVY_LATEST_VERSION}_Linux-64bit.tar.gz
     - tar xzvf trivy_${TRIVY_LATEST_VERSION}_Linux-64bit.tar.gz
   script:
+    # Check if AIRFLOW_VERSION is set
+    - |
+      if [ -z "${AIRFLOW_VERSION}" ]; then
+        echo "Error: AIRFLOW_VERSION is not set"
+        exit 1
+      fi
+    
     # Pull cache image if it exists
     - |
       docker pull $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:latest || true
     
     # Build with cache
     - |
-      echo "Using Airflow version: ${AIRFLOW_VERSION}"
       docker build \
-        --build-arg "AIRFLOW_VERSION=${AIRFLOW_VERSION}" \
+        --build-arg AIRFLOW_VERSION="${AIRFLOW_VERSION}" \
         --cache-from "$GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:latest" \
         --build-arg BUILDKIT_INLINE_CACHE=1 \
         --tag "$GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG" \
         .
-    
     # Tag images
     - docker tag $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:$TAG $GCP_ARTIFACT_REGISTRY_HOST/$GCP_PROJECT_NAME/$ARTIFACT_REGISTRY_REPO/$CI_PROJECT_NAME:${AIRFLOW_VERSION}
     
