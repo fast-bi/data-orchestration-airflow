@@ -15,6 +15,7 @@
 ARG BASE_AIRFLOW_IMAGE=apache/airflow:2.11.0-python3.11
 ARG AIRFLOW_VERSION
 FROM ${BASE_AIRFLOW_IMAGE}
+LABEL maintainer=support@fast.bi
 
 SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
 
