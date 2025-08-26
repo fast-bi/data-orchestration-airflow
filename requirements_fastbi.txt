@@ -1,9 +1,2 @@
 # Fast-BI packages
-opentelemetry-exporter-otlp==1.29.0
-opentelemetry-exporter-otlp-proto-common==1.29.0
-opentelemetry-exporter-otlp-proto-http==1.29.0
-opentelemetry-exporter-otlp-proto-grpc==1.29.0
-opentelemetry-proto==1.29.0
-fast-bi-dbt-runner==2024.0.2.13
-dbt-core==1.8.9
-dbt-bigquery==1.8.3
+pandas
