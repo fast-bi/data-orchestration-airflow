@@ -11,7 +11,7 @@ catch() {
 }
 trap 'catch $? $LINENO' EXIT
 
-airflow_version='2.10.4-python3.11'
+airflow_version='2.11.0-python3.11'
 airflow_version_short=$(echo $airflow_version | cut -d '-' -f 1)
 
 # docker build . \
@@ -28,7 +28,7 @@ echo "Base Image: $airflow_version"
 docker buildx build . \
   --pull \
   --build-arg BASE_AIRFLOW_IMAGE="apache/airflow:${airflow_version}" --build-arg AIRFLOW_VERSION="${airflow_version_short}" \
-  --tag europe-central2-docker.pkg.dev/fast-bi-common/airflow/airflow-gcp:${airflow_version_short} \
+  --tag europe-central2-docker.pkg.dev/fast-bi-common/bi-platform/airflow-gcp:${airflow_version_short} \
   --platform linux/amd64 \
   --push
 
