@@ -36,7 +36,7 @@ RUN DOWNLOAD_URL="https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/goo
        --bash-completion=false \
        --path-update=false \
        --usage-reporting=false \
-       --additional-components alpha beta kubectl \
+       --additional-components kubectl \
        --quiet \
     && rm -rf "${TMP_DIR}" \
     && rm -rf "${GCLOUD_HOME}/.install/.backup/" \
