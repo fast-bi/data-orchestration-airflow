@@ -24,6 +24,3 @@ docker buildx build . \
   --platform linux/amd64 \
   --push
 
-##
-##pip install --index-url https://europe-central2-python.pkg.dev/fast-bi-common/bi-platform-pypi-packages/simple/ fast-bi-dbt-runner==0.0.1
-
