@@ -1,0 +1,542 @@
+{% extends "airflow/main.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Package Manager</h2>
+    
+    <!-- Status Messages -->
+    <div id="statusMessages" class="alert custom-alert" style="display: none;"></div>
+    
+    <!-- Add Package Form -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title mb-0 d-flex align-items-center">
+                        Add New Package
+                        <div class="help-icon ms-2">
+                            <i class="fas fa-question-circle text-primary"></i>
+                            <div class="custom-tooltip">
+                                <div class="tooltip-content">
+                                    <p class="mb-2"><strong>Package Installation Process:</strong></p>
+                                    <ul>
+                                        <li>The package will be added to the system requirements</li>
+                                        <li>Airflow components will be restarted to install the package</li>
+                                        <li>This process typically takes 5 minutes</li>
+                                        <li>Installation time may vary depending on package size and dependencies</li>
+                                        <li>During installation, some Airflow services may be temporarily unavailable</li>
+                                        <li>Use the Update button to change package versions without removing and re-adding</li>
+                                    </ul>
+                                    <p class="mb-0"><em>Please ensure critical workflows are not running during package installation.</em></p>
+                                </div>
+                            </div>
+                        </div>
+                    </h5>
+                    <form id="addPackageForm">
+                        <div class="form-group">
+                            <input type="text" class="form-control" id="packageName" 
+                                   placeholder="Package name (e.g., pandas==1.5.0)"
+                                   pattern="^[a-zA-Z0-9\-_.]+(==[0-9]+(\.[0-9]+)*)?$"
+                                   title="Enter valid package name (e.g., package-name==1.0.0)">
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-2">
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            Add Package
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Package List -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Installed Packages</h5>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Package</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for package in packages %}
+                                <tr>
+                                    <td>{{ package }}</td>
+                                    <td>
+                                        <button class="btn btn-warning btn-sm update-package me-2" data-package="{{ package }}">
+                                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                            Update
+                                        </button>
+                                        <button class="btn btn-danger btn-sm remove-package" data-package="{{ package }}">
+                                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                            Remove
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Package Modal -->
+<div class="modal fade" id="updatePackageModal" tabindex="-1" aria-labelledby="updatePackageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updatePackageModalLabel">Update Package</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="updatePackageForm">
+                    <div class="mb-3">
+                        <label for="currentPackage" class="form-label">Current Package</label>
+                        <input type="text" class="form-control" id="currentPackage" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newPackageVersion" class="form-label">New Package Version</label>
+                        <input type="text" class="form-control" id="newPackageVersion" 
+                               placeholder="Package name with version (e.g., pandas==1.5.0)"
+                               pattern="^[a-zA-Z0-9\-_.]+(==[0-9]+(\.[0-9]+)*)?$"
+                               title="Enter valid package name with version (e.g., package-name==1.0.0)"
+                               required>
+                        <div class="form-text">Enter the package name with the new version you want to install.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirmUpdateBtn">
+                    <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    Update Package
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .spinner-border {
+        width: 1rem;
+        height: 1rem;
+        margin-right: 0.5rem;
+    }
+    
+    .custom-alert {
+        position: fixed;
+        bottom: 50px;
+        right: 50px;
+        z-index: 1050;
+        min-width: 300px;
+        max-width: 500px;
+        display: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .help-icon {
+        position: relative;
+        cursor: help;
+        margin-left: 8px;
+        display: inline-flex;
+        align-items: center;
+        height: 100%;
+    }
+    
+    .help-icon i {
+        font-size: 1rem;
+        opacity: 0.8;
+        transition: opacity 0.2s ease-in-out;
+        line-height: 1;
+    }
+
+    .help-icon:hover i {
+        opacity: 1;
+    }
+
+    .custom-tooltip {
+        visibility: hidden;
+        opacity: 0;
+        position: absolute;
+        top: 250%;
+        left: 100%;
+        transform: translateY(-50%);
+        padding: 15px;
+        background-color: #2c3e50;
+        color: white;
+        border-radius: 6px;
+        width: 400px;
+        z-index: 1000;
+        transition: opacity 0.3s, visibility 0.3s;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        margin-left: 10px;
+    }
+
+    .custom-tooltip::before {
+        content: '';
+        position: absolute;
+        top: 39%;
+        left: -8px;
+        transform: translateY(-50%);
+        border-width: 8px 8px 8px 0;
+        border-style: solid;
+        border-color: transparent #2c3e50 transparent transparent;
+    }
+
+    .help-icon:hover .custom-tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .tooltip-content {
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+
+    .tooltip-content ul {
+        padding-left: 20px;
+        margin: 10px 0;
+    }
+
+    .tooltip-content li {
+        margin-bottom: 5px;
+        color: #fff;
+    }
+
+    .tooltip-content p {
+        margin: 0;
+        color: #fff;
+    }
+
+    .btn-warning {
+        color: #fff;
+        background-color: #ffc107;
+        border-color: #ffc107;
+    }
+
+    .btn-warning:hover {
+        color: #fff;
+        background-color: #e0a800;
+        border-color: #d39e00;
+    }
+
+    .me-2 {
+        margin-right: 0.5rem !important;
+    }
+</style>
+
+<script>
+
+
+function showMessage(message, type = 'info') {
+    const statusDiv = document.getElementById('statusMessages');
+    statusDiv.className = `alert alert-${type} custom-alert`;
+    statusDiv.textContent = message;
+    statusDiv.style.display = 'block';
+    
+    setTimeout(() => {
+        statusDiv.style.display = 'none';
+    }, 5000);
+}
+
+function setLoading(element, isLoading) {
+    const spinner = element.querySelector('.spinner-border');
+    if (spinner) {
+        spinner.classList.toggle('d-none', !isLoading);
+    }
+    element.disabled = isLoading;
+}
+
+async function makeAuthenticatedRequest(url, method, data) {
+    try {
+
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(data),
+            credentials: 'include'
+        });
+
+        const responseData = await response.json();
+
+        
+        if (!response.ok) {
+            throw new Error(responseData.error || 'Request failed');
+        }
+        return responseData;
+    } catch (error) {
+
+        throw new Error(error.message || 'Network error');
+    }
+}
+
+function validatePackageName(packageName) {
+    const pattern = /^[a-zA-Z0-9\-_.]+(==[0-9]+(\.[0-9]+)*)?$/;
+    return pattern.test(packageName);
+}
+
+// Add package form handler
+document.addEventListener('DOMContentLoaded', function() {
+    const addForm = document.getElementById('addPackageForm');
+    if (addForm) {
+        addForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+        
+            const form = e.target;
+            const submitButton = form.querySelector('button[type="submit"]');
+            const packageName = document.getElementById('packageName').value.trim();
+            
+
+            
+            if (!validatePackageName(packageName)) {
+                showMessage('Invalid package name format. Example: package-name==1.0.0', 'danger');
+                return;
+            }
+            
+            setLoading(submitButton, true);
+            
+            try {
+                const token = await getOperationToken('add', packageName);
+                const response = await makeAuthenticatedRequest('/package-manager/add', 'POST', { 
+                    package: packageName,
+                    token: token
+                });
+                
+                showMessage(response.message, 'success');
+                location.reload();
+            } catch (error) {
+                console.error('Add operation failed:', error);
+                // If token error, try to refresh the page
+                if (error.message.includes('Invalid or expired token') || error.message.includes('Token generation failed')) {
+                    showMessage('Session expired. Please try again.', 'warning');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showMessage(error.message, 'danger');
+                }
+            } finally {
+                setLoading(submitButton, false);
+            }
+        });
+    } else {
+        console.error('Add package form not found');
+    }
+});
+
+// Update package button handlers
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.update-package').forEach(button => {
+        button.addEventListener('click', () => {
+        
+            const package = button.dataset.package;
+            
+            // Set the form values
+            const currentPackageInput = document.getElementById('currentPackage');
+            const newPackageInput = document.getElementById('newPackageVersion');
+            
+            if (currentPackageInput && newPackageInput) {
+                currentPackageInput.value = package;
+                newPackageInput.value = package; // Pre-fill with current version
+                newPackageInput.focus();
+                
+                // Show the modal using jQuery or vanilla JS
+                const modalElement = document.getElementById('updatePackageModal');
+                if (modalElement) {
+                    // Try Bootstrap 5 first
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        const modal = new bootstrap.Modal(modalElement);
+                        modal.show();
+                    }
+                    // Fallback to jQuery if available
+                    else if (typeof $ !== 'undefined' && $.fn.modal) {
+                        $(modalElement).modal('show');
+                    }
+                    // Fallback to vanilla JS
+                    else {
+                        modalElement.style.display = 'block';
+                        modalElement.classList.add('show');
+                        document.body.classList.add('modal-open');
+                    }
+                } else {
+                    showMessage('Error: Update modal not found', 'danger');
+                }
+            } else {
+                showMessage('Error: Update form not found', 'danger');
+            }
+        });
+    });
+});
+
+// Remove package button handlers
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.remove-package').forEach(button => {
+        button.addEventListener('click', async () => {
+        
+            const package = button.dataset.package;
+            
+            if (!confirm(`Are you sure you want to remove ${package}? This action cannot be undone.`)) {
+                return;
+            }
+            
+            setLoading(button, true);
+            
+            try {
+                const token = await getOperationToken('remove', package);
+                const response = await makeAuthenticatedRequest('/package-manager/remove', 'POST', { 
+                    package: package,
+                    token: token
+                });
+                
+                showMessage(response.message, 'success');
+                location.reload();
+            } catch (error) {
+                console.error('Remove operation failed:', error);
+                // If token error, try to refresh the page
+                if (error.message.includes('Invalid or expired token') || error.message.includes('Token generation failed')) {
+                    showMessage('Session expired. Please try again.', 'warning');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showMessage(error.message, 'danger');
+                }
+            } finally {
+                setLoading(button, false);
+            }
+        });
+    });
+});
+
+async function getOperationToken(operation, package) {
+    try {
+
+        const response = await fetch('/package-manager/generate_token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ operation, package }),
+            credentials: 'include'
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to generate token');
+        }
+
+        return data.token;
+    } catch (error) {
+
+        throw new Error(`Token generation failed: ${error.message}`);
+    }
+}
+
+// Confirm update button handler
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmBtn = document.getElementById('confirmUpdateBtn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', async () => {
+        
+            const currentPackage = document.getElementById('currentPackage').value;
+            const newPackage = document.getElementById('newPackageVersion').value.trim();
+            
+
+            
+            if (!validatePackageName(newPackage)) {
+                showMessage('Invalid package name format. Example: package-name==1.0.0', 'danger');
+                return;
+            }
+            
+            if (currentPackage === newPackage) {
+                showMessage('New package version is the same as current version. No update needed.', 'warning');
+                return;
+            }
+            
+            setLoading(confirmBtn, true);
+            
+            try {
+                const token = await getOperationToken('update', currentPackage);
+                const response = await makeAuthenticatedRequest('/package-manager/update', 'POST', { 
+                    old_package: currentPackage,
+                    new_package: newPackage,
+                    token: token
+                });
+                
+                showMessage(response.message, 'success');
+                
+                // Close the modal
+                const modalElement = document.getElementById('updatePackageModal');
+                if (modalElement) {
+                    // Try Bootstrap 5 first
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        const modal = bootstrap.Modal.getInstance(modalElement);
+                        if (modal) {
+                            modal.hide();
+                        }
+                    }
+                    // Fallback to jQuery if available
+                    else if (typeof $ !== 'undefined' && $.fn.modal) {
+                        $(modalElement).modal('hide');
+                    }
+                    // Fallback to vanilla JS
+                    else {
+                        modalElement.style.display = 'none';
+                        modalElement.classList.remove('show');
+                        document.body.classList.remove('modal-open');
+                    }
+                }
+                
+                // Reload the page
+                location.reload();
+            } catch (error) {
+                console.error('Update operation failed:', error);
+                // If token error, try to refresh the page
+                if (error.message.includes('Invalid or expired token') || error.message.includes('Token generation failed')) {
+                    showMessage('Session expired. Please try again.', 'warning');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showMessage(error.message, 'danger');
+                }
+            } finally {
+                setLoading(confirmBtn, false);
+            }
+        });
+    } else {
+        console.error('Confirm update button not found');
+    }
+});
+
+// Handle Enter key in the new package version input
+document.addEventListener('DOMContentLoaded', function() {
+    const newPackageInput = document.getElementById('newPackageVersion');
+    if (newPackageInput) {
+        newPackageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const confirmBtn = document.getElementById('confirmUpdateBtn');
+                if (confirmBtn) {
+                    confirmBtn.click();
+                }
+            }
+        });
+    }
+    
+
+});
+</script>
+{% endblock %}
