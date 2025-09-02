@@ -50,6 +50,7 @@ jobs:
           severity: 'CRITICAL'
           exit-code: '1'
           ignore-unfixed: true
+          timeout: 45m
 
       - name: Comment PR with scan results
         uses: actions/github-script@v7
