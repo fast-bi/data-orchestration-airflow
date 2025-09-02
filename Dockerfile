@@ -59,8 +59,9 @@ RUN set -ex && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Add configurations
-ADD pip.conf /etc/xdg/pip/pip.conf
+# Add Regitry Credentials - Not required when using PYPI.ORG registry.
+# ADD pip.conf /etc/xdg/pip/pip.conf
+# Add configurations - Not required when using PYPI.ORG registry.
 COPY lsyncd.conf.lua /etc/lsyncd/lsyncd.conf.lua
 
 # Setup directories and permissions
