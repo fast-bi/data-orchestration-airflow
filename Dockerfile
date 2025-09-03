@@ -21,7 +21,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
 
 USER 0
 
-ARG CLOUD_SDK_VERSION=535.0.0
+ARG CLOUD_SDK_VERSION=536.0.0
 ENV GCLOUD_HOME=/opt/google-cloud-sdk
 ENV PATH="${GCLOUD_HOME}/bin/:${PATH}"
 ENV PYTHONPATH="/home/airflow/.local/lib/python3.11/site-packages"
