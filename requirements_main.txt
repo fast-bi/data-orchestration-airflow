@@ -5,3 +5,9 @@ pyarrow==19.0.1
 kubernetes<=31.0.0
 apache-airflow-providers-cncf-kubernetes
 apache-airflow-providers-snowflake>6.3.1
+
+# Resolve conflicts
+google-cloud-resource-manager==1.12.5
+google-cloud-aiplatform==1.72.0
+opentelemetry-exporter-otlp==1.27.0
+opentelemetry-sdk==1.27.0

@@ -23,4 +23,3 @@ docker buildx build . \
   --tag europe-central2-docker.pkg.dev/fast-bi-common/bi-platform/airflow-gcp:${airflow_version_short} \
   --platform linux/amd64 \
   --push
-
