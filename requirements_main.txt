@@ -3,6 +3,4 @@ connexion[swagger-ui]<3.0
 cryptography==44.0.2
 pyarrow==19.0.1
 kubernetes<=31.0.0
-apache-airflow-providers-google
-apache-airflow-providers-airbyte
 apache-airflow-providers-cncf-kubernetes
