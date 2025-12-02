@@ -11,9 +11,14 @@ bash = {
     init = function(event)
         spawn(event, "/bin/bash", "-c", 
             string.format([[
-                wt_dir=$(ls -d "%s"*/dags/dbt/)
-                rsync -r --links --no-perms --no-owner --no-group --delete --copy-links --keep-dirlinks --safe-links "$wt_dir" "%s"
-            ]], event.source, event.target)
+                # Find the most recently modified worktree (sorted by modification time, newest first)
+                wt_dir=$(ls -dt "%s"*/dags/dbt/ 2>/dev/null | head -n 1)
+                if [ -n "$wt_dir" ] && [ -d "$wt_dir" ]; then
+                    rsync -r --links --no-perms --no-owner --no-group --delete --copy-links --keep-dirlinks --safe-links "$wt_dir" "%s"
+                else
+                    echo "Warning: No valid worktree directory found at %s"
+                fi
+            ]], event.source, event.target, event.source)
         )
     end,
     action = function(inlet)
@@ -22,9 +27,14 @@ bash = {
             local config = inlet.getConfig()
             spawn(elist, "/bin/bash", "-c", 
                 string.format([[
-                    wt_dir=$(ls -d "%s"*/dags/dbt/)
-                    rsync -r --links --no-perms --no-owner --no-group --delete --copy-links --keep-dirlinks --safe-links "$wt_dir" "%s"
-                ]], config.source, config.target)
+                    # Find the most recently modified worktree (sorted by modification time, newest first)
+                    wt_dir=$(ls -dt "%s"*/dags/dbt/ 2>/dev/null | head -n 1)
+                    if [ -n "$wt_dir" ] && [ -d "$wt_dir" ]; then
+                        rsync -r --links --no-perms --no-owner --no-group --delete --copy-links --keep-dirlinks --safe-links "$wt_dir" "%s"
+                    else
+                        echo "Warning: No valid worktree directory found at %s"
+                    fi
+                ]], config.source, config.target, config.source)
             )
         end
     end
