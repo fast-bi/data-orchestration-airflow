@@ -1,7 +1,0 @@
-###### Runtime packages (also mounted via airflow-config-pypi ConfigMap) ######
-fast-bi-dbt-runner==2026.1.0.9
-fast-bi-replication-control==0.1.0
-dbt-bigquery==1.10.3
-dbt-core==1.10.19
-openpyxl
-xlrd>=2.0.1
