@@ -29,6 +29,8 @@ ARG CLOUD_SDK_VERSION=573.0.0
 ARG KUBECTL_VERSION=v1.33.13
 ENV GCLOUD_HOME=/opt/google-cloud-sdk
 ENV PATH="${GCLOUD_HOME}/bin/:${PATH}"
+ENV CLOUDSDK_PYTHON=python3.11
+ENV CLOUDSDK_PYTHON_SITEPACKAGES=0
 ENV PYTHONPATH="/home/airflow/.local/lib/python3.11/site-packages"
 
 # Install gcloud SDK
@@ -37,7 +39,7 @@ RUN DOWNLOAD_URL="https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/goo
     && curl -fL "${DOWNLOAD_URL}" --output "${TMP_DIR}/google-cloud-sdk.tar.gz" \
     && mkdir -p "${GCLOUD_HOME}" \
     && tar xzf "${TMP_DIR}/google-cloud-sdk.tar.gz" -C "${GCLOUD_HOME}" --strip-components=1 \
-    && "${GCLOUD_HOME}/install.sh" \
+    && CLOUDSDK_PYTHON="${CLOUDSDK_PYTHON}" CLOUDSDK_PYTHON_SITEPACKAGES="${CLOUDSDK_PYTHON_SITEPACKAGES}" "${GCLOUD_HOME}/install.sh" \
        --bash-completion=false \
        --path-update=false \
        --usage-reporting=false \
@@ -45,7 +47,7 @@ RUN DOWNLOAD_URL="https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/goo
        --quiet \
     && rm -rf "${TMP_DIR}" \
     && rm -rf "${GCLOUD_HOME}/.install/.backup/" \
-    && gcloud --version
+    && CLOUDSDK_PYTHON="${CLOUDSDK_PYTHON}" CLOUDSDK_PYTHON_SITEPACKAGES="${CLOUDSDK_PYTHON_SITEPACKAGES}" gcloud --version
 
 # Install kubectl standalone (current release built with patched Go) and verify its
 # checksum. Replaces the gcloud-bundled multi-version kubectl flagged by CVE-2025-68121.
