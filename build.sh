@@ -11,7 +11,7 @@ catch() {
 }
 trap 'catch $? $LINENO' EXIT
 
-airflow_version='2.11.1-python3.11'
+airflow_version='2.11.2-python3.11'
 airflow_version_short=$(echo $airflow_version | cut -d '-' -f 1)
 
 echo "Building Airflow version: $airflow_version_short"

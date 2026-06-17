@@ -108,19 +108,82 @@ All package operations are logged with:
 ## Technical Details
 
 ### Architecture
-- **Backend**: Flask-based plugin integrated with Airflow
+- **Backend**: Flask-based plugin integrated with Airflow (`__init__.py` view + `k8s_rollout.py` helpers)
 - **Frontend**: HTML/CSS/JavaScript with Bootstrap styling
 - **Storage**: Kubernetes ConfigMap (`airflow-config-pypi`)
-- **Deployment**: Automatic pod restart via Kubernetes API
+- **Deployment**: Rolling restart via `kubectl rollout restart` (no scale-down)
+
+### Restart Mechanism (rolling restart, no downscale)
+When packages are modified, the plugin runs the equivalent of:
+
+```
+kubectl rollout restart deployment,statefulset -l 'component in (worker,triggerer,scheduler)' -n <namespace>
+```
+
+This patches each workload's pod template with a restart annotation, so Kubernetes
+recreates pods **gradually while preserving the configured replica count**. Your
+4 workers stay 4 — they are *not* scaled to zero. Running tasks drain during the
+rolling restart instead of being killed by a full outage.
+
+> **Previous behaviour (removed):** the plugin used to scale every component to
+> `0` and back up. A bug captured the replica count *after* setting it to `0`, so
+> components always came back up at `1` replica regardless of their real size
+> (e.g. 4 workers → 0 → 1). The rolling-restart approach fixes both the outage and
+> the replica loss.
 
 ### Components Affected
-When packages are modified, the following Airflow components are restarted:
-- Worker pods
-- Triggerer pods
-- Scheduler pods
+Matched by the `component` label, restarted in place:
+- Worker pods (`component=worker`)
+- Triggerer pods (`component=triggerer`)
+- Scheduler pods (`component=scheduler`)
+
+### Previous State & Rollback
+- Before each change, the prior `requirements.txt` and the current replica/rollout
+  state are captured.
+- The prior requirements are stored as ConfigMap annotations:
+  `fast.bi/previous-requirements`, `fast.bi/last-modified-by`, `fast.bi/last-modified-at`.
+- The UI shows a **Previous State** panel and a **Roll back** button that restores
+  the prior requirements and triggers another rolling restart.
+- A **Restart Status** panel polls `GET /package-manager/status` to show per-component
+  rollout progress (ready / updated replicas) live.
+
+### Cluster-side requirements (apply in the infra repo)
+These live in `data-platform-infrastructure-deployment-files`, **not** in this image:
+
+1. **RBAC** — the Airflow ServiceAccount used by the webserver needs permission to
+   patch workloads and read their status. Example `Role` rules:
+
+   ```yaml
+   rules:
+     - apiGroups: [""]
+       resources: ["configmaps"]
+       verbs: ["get", "patch"]
+     - apiGroups: ["apps"]
+       resources: ["deployments", "statefulsets"]
+       verbs: ["get", "list", "patch"]   # patch is required for rollout restart
+     - apiGroups: ["apps"]
+       resources: ["deployments/scale", "statefulsets/scale"]
+       verbs: ["get"]                      # scale verb no longer needs patch
+   ```
+
+   Without the `patch` verb on `deployments`/`statefulsets`, the rollout returns
+   `403 Forbidden`.
+
+2. **StatefulSet update strategy** must be `RollingUpdate` (the default) for
+   `kubectl rollout restart` to act on workers/triggerer. Verify with:
+
+   ```
+   kubectl get statefulset -l 'component in (worker,triggerer)' -n <ns> \
+     -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.spec.updateStrategy.type}{"\n"}{end}'
+   ```
+
+   Any component on `OnDelete` will not be restarted by rollout restart.
+
+3. **kubectl** must be present in the image (it is — installed via the gcloud SDK
+   in the Dockerfile).
 
 ### Configuration
-- **Namespace**: `data-orchestration` (configurable via environment variable)
+- **Namespace**: `data-orchestration` (env `AIRFLOW__KUBERNETES_ENVIRONMENT_VARIABLES__AIRFLOW_NAMESPACE`)
 - **ConfigMap**: `airflow-config-pypi`
 - **Token Expiry**: 1 hour
 
@@ -172,6 +235,9 @@ Package manager operations are logged in:
 - Verify security measures
 - Test error conditions
 - Validate Kubernetes integration
+- Run the dependency-free unit tests: `pytest tests/test_k8s_rollout.py`
+  (these cover the kubectl arg construction, JSON parsing, and rollout-state
+  logic without needing Airflow/Flask/kubernetes installed)
 
 ## Support
 
@@ -182,7 +248,16 @@ For issues or questions:
 
 ## Changelog
 
-### Version 2.0 (Current)
+### Version 3.0 (Current)
+- ✅ **Rolling restart instead of scale-to-zero** — replica counts are preserved (no more 4→0→1 downscale), no full outage
+- ✅ Restart now uses `kubectl rollout restart` (kubectl shipped in the image)
+- ✅ Previous-state capture (prior requirements + replica state) stored as ConfigMap annotations
+- ✅ New `GET /status` endpoint + live Restart Status panel
+- ✅ New `POST /rollback` endpoint + UI button to restore previous requirements
+- ✅ Extracted rollout logic into dependency-free `k8s_rollout.py` with unit tests
+- ✅ Simplified token storage (single module store + session fallback); removed unused imports
+
+### Version 2.0
 - ✅ Added package update functionality
 - ✅ Improved package name validation
 - ✅ Enhanced error handling
