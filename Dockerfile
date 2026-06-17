@@ -91,10 +91,13 @@ RUN mkdir -p /etc/lsyncd /home/airflow/.local/lib/python3.11/site-packages && \
     chown -R airflow:root /home/airflow/.local
 
 # Copy requirements files
-COPY --chown=airflow:root requirements_main.txt requirements_fastbi.txt /home/airflow/
+COPY --chown=airflow:root requirements_main.txt requirements_fastbi.txt requirements_runtime.txt /home/airflow/
+COPY --chown=airflow:root install-runtime-packages.sh /usr/local/bin/install-runtime-packages.sh
 
 # Create plugins directory and copy package manager plugin
 COPY --chown=airflow:root plugins/package_manager /opt/airflow/plugins/package_manager
+
+RUN chmod 755 /usr/local/bin/install-runtime-packages.sh
 
 USER ${AIRFLOW_UID}
 
@@ -120,3 +123,7 @@ RUN python3 -m pip install --no-cache-dir \
         --use-pep517 \
         -r /home/airflow/requirements_fastbi.txt && \
     pip check
+
+# Stage 3 Bake runtime packages (dbt/fast-bi). Uses --no-deps to avoid google
+# dependency resolver backtracking against providers-google in the image.
+RUN /usr/local/bin/install-runtime-packages.sh /home/airflow/requirements_runtime.txt
