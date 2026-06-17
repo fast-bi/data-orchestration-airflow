@@ -21,13 +21,12 @@
                                     <p class="mb-2"><strong>Package Installation Process:</strong></p>
                                     <ul>
                                         <li>The package will be added to the system requirements</li>
-                                        <li>Airflow components will be restarted to install the package</li>
-                                        <li>This process typically takes 5 minutes</li>
+                                        <li>Airflow components are restarted via a <strong>rolling restart</strong> (no scale-down)</li>
+                                        <li>Replica counts are preserved &mdash; pods restart gradually, one at a time</li>
                                         <li>Installation time may vary depending on package size and dependencies</li>
-                                        <li>During installation, some Airflow services may be temporarily unavailable</li>
                                         <li>Use the Update button to change package versions without removing and re-adding</li>
                                     </ul>
-                                    <p class="mb-0"><em>Please ensure critical workflows are not running during package installation.</em></p>
+                                    <p class="mb-0"><em>Running tasks are drained gracefully during the rolling restart.</em></p>
                                 </div>
                             </div>
                         </div>
@@ -82,6 +81,59 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rollout Status -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title d-flex align-items-center justify-content-between">
+                        <span>Restart Status</span>
+                        <button class="btn btn-outline-secondary btn-sm" id="refreshStatusBtn" type="button">Refresh</button>
+                    </h5>
+                    <div id="rolloutStatus" class="table-responsive">
+                        <p class="text-muted mb-0">Loading component status&hellip;</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Previous State / Rollback -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Previous State</h5>
+                    {% if last_modified_at %}
+                    <p class="mb-2">
+                        <small class="text-muted">
+                            Last change by <strong>{{ last_modified_by }}</strong> at <strong>{{ last_modified_at }}</strong>
+                        </small>
+                    </p>
+                    {% if previous_requirements %}
+                    <details>
+                        <summary>Previous requirements ({{ previous_requirements|length }} packages)</summary>
+                        <ul class="mt-2">
+                            {% for package in previous_requirements %}
+                            <li><code>{{ package }}</code></li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                    <button class="btn btn-outline-danger btn-sm mt-2" id="rollbackBtn" type="button">
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        Roll back to previous requirements
+                    </button>
+                    {% else %}
+                    <p class="text-muted mb-0">Previous requirements snapshot is empty.</p>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted mb-0">No prior changes recorded yet.</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -535,8 +587,100 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
 
+
+});
+
+// ---------------------------------------------------------------------------
+// Rollout status polling
+// ---------------------------------------------------------------------------
+function renderRolloutStatus(data) {
+    const container = document.getElementById('rolloutStatus');
+    if (!container) return;
+    const components = (data && data.components) || [];
+    if (components.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0">No managed components found.</p>';
+        return;
+    }
+    let rows = '';
+    components.forEach(c => {
+        const desired = c.desired == null ? '?' : c.desired;
+        const badge = c.complete
+            ? '<span class="badge bg-success">Ready</span>'
+            : '<span class="badge bg-warning text-dark">Restarting</span>';
+        rows += `<tr>
+            <td>${c.component || c.name}</td>
+            <td>${c.kind}</td>
+            <td>${c.ready}/${desired} ready</td>
+            <td>${c.updated}/${desired} updated</td>
+            <td>${badge}</td>
+        </tr>`;
+    });
+    container.innerHTML = `<table class="table table-sm mb-0">
+        <thead><tr><th>Component</th><th>Kind</th><th>Ready</th><th>Updated</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+    </table>`;
+}
+
+let statusPollTimer = null;
+
+async function refreshRolloutStatus() {
+    try {
+        const response = await fetch('/package-manager/status', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'include'
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to load status');
+        renderRolloutStatus(data);
+
+        // Auto-refresh while a rollout is in progress.
+        if (statusPollTimer) { clearTimeout(statusPollTimer); statusPollTimer = null; }
+        if (data.in_progress) {
+            statusPollTimer = setTimeout(refreshRolloutStatus, 5000);
+        }
+    } catch (error) {
+        const container = document.getElementById('rolloutStatus');
+        if (container) {
+            container.innerHTML = `<p class="text-danger mb-0">${error.message}</p>`;
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    refreshRolloutStatus();
+    const refreshBtn = document.getElementById('refreshStatusBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', refreshRolloutStatus);
+    }
+
+    const rollbackBtn = document.getElementById('rollbackBtn');
+    if (rollbackBtn) {
+        rollbackBtn.addEventListener('click', async () => {
+            if (!confirm('Roll back to the previous requirements? Components will restart (rolling).')) {
+                return;
+            }
+            setLoading(rollbackBtn, true);
+            try {
+                const token = await getOperationToken('rollback', 'requirements');
+                const response = await makeAuthenticatedRequest('/package-manager/rollback', 'POST', { token: token });
+                showMessage(response.message, 'success');
+                refreshRolloutStatus();
+                setTimeout(() => { location.reload(); }, 2000);
+            } catch (error) {
+                console.error('Rollback failed:', error);
+                if (error.message.includes('Invalid or expired token') || error.message.includes('Token generation failed')) {
+                    showMessage('Session expired. Please try again.', 'warning');
+                    setTimeout(() => { location.reload(); }, 2000);
+                } else {
+                    showMessage(error.message, 'danger');
+                }
+            } finally {
+                setLoading(rollbackBtn, false);
+            }
+        });
+    }
 });
 </script>
 {% endblock %}
