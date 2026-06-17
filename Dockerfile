@@ -21,7 +21,12 @@ SHELL ["/bin/bash", "-o", "pipefail", "-e", "-u", "-x", "-c"]
 
 USER 0
 
-ARG CLOUD_SDK_VERSION=512.0.0
+# Bumped 512.0.0 -> 573.0.0: rebuilt Go binaries (gcloud-crc32c, gke-gcloud-auth-plugin)
+# remediate CVE-2025-68121 (crypto/tls). kubectl is installed standalone below instead
+# of via the gcloud component (the bundled multi-version kubectl ships old Go 1.22.x).
+ARG CLOUD_SDK_VERSION=573.0.0
+# Pinned kubectl built with patched Go (>=1.24.13) — also remediates CVE-2025-68121.
+ARG KUBECTL_VERSION=v1.33.13
 ENV GCLOUD_HOME=/opt/google-cloud-sdk
 ENV PATH="${GCLOUD_HOME}/bin/:${PATH}"
 ENV PYTHONPATH="/home/airflow/.local/lib/python3.11/site-packages"
@@ -36,11 +41,22 @@ RUN DOWNLOAD_URL="https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/goo
        --bash-completion=false \
        --path-update=false \
        --usage-reporting=false \
-       --additional-components kubectl \
+       --additional-components gke-gcloud-auth-plugin \
        --quiet \
     && rm -rf "${TMP_DIR}" \
     && rm -rf "${GCLOUD_HOME}/.install/.backup/" \
     && gcloud --version
+
+# Install kubectl standalone (current release built with patched Go) and verify its
+# checksum. Replaces the gcloud-bundled multi-version kubectl flagged by CVE-2025-68121.
+RUN curl -fsSL -o /usr/local/bin/kubectl \
+        "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
+    && curl -fsSL -o /tmp/kubectl.sha256 \
+        "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl.sha256" \
+    && echo "$(cat /tmp/kubectl.sha256)  /usr/local/bin/kubectl" | sha256sum --check \
+    && chmod +x /usr/local/bin/kubectl \
+    && rm -f /tmp/kubectl.sha256 \
+    && kubectl version --client
 
 # Install Python 3.11 and dependencies
 RUN set -ex && \
@@ -53,6 +69,8 @@ RUN set -ex && \
         git \
         lsyncd \
         libopenmpi-dev && \
+    # Security: pull patched OS libs (gnutls CVE-2026-33845/42010, openssl CVE-2026-31789)
+    apt-get install -y --only-upgrade libgnutls30 libssl3 openssl && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
     update-alternatives --set python3 /usr/bin/python3.11 && \
     ln -sf /usr/bin/python3.11 /usr/bin/python && \

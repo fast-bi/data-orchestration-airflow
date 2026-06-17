@@ -13,3 +13,12 @@ opentelemetry-exporter-otlp-proto-http==1.30.0
 opentelemetry-exporter-otlp-proto-grpc==1.30.0
 opentelemetry-proto==1.30.0
 kubernetes<=31.0.0
+
+# Security overrides: force patched transitive dependencies (Trivy CRITICAL remediation).
+# Pulled in via apache-airflow-providers-google -> google-cloud-aiplatform[evaluation]
+# and the bundled amazon redshift driver. pip check (run after install) validates resolution.
+# Upper bound matches google-cloud-aiplatform[evaluation]'s litellm<1.86.0 cap so
+# `pip check` stays green; 1.84.x/1.85.x already fix all three CVEs below.
+litellm>=1.84.0,<1.86.0     # CVE-2026-35030, CVE-2026-42208, CVE-2026-49468
+ray>=2.52.0                 # CVE-2025-62593
+redshift-connector>=2.1.14  # CVE-2026-8838
