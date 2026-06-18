@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import logging
 import secrets
+import importlib.util
 from datetime import datetime, timedelta
 from typing import Any, Tuple, List, Dict
 
@@ -15,7 +16,13 @@ from airflow.www.auth import has_access
 from flask_appbuilder import BaseView, expose
 from airflow.www.app import csrf
 
-from . import k8s_rollout
+# Airflow loads this plugin's __init__.py as a standalone module with no package
+# context, so `from . import k8s_rollout` (and even `from package_manager import
+# ...`) is unreliable. Load the sibling helper by absolute file path instead.
+_k8s_rollout_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "k8s_rollout.py")
+_k8s_rollout_spec = importlib.util.spec_from_file_location("package_manager_k8s_rollout", _k8s_rollout_path)
+k8s_rollout = importlib.util.module_from_spec(_k8s_rollout_spec)
+_k8s_rollout_spec.loader.exec_module(k8s_rollout)
 
 logger = logging.getLogger(__name__)
 
