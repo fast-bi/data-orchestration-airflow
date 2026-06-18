@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
-# Install packages from /opt/airflow/requirements.txt without pip dependency resolution.
+# Install packages from /opt/airflow/requirements.txt with full dependency resolution.
 #
-# The image already ships apache-airflow-providers-google (google-cloud-storage 3.x).
-# dbt-bigquery declares google-cloud-storage<3.2, so a normal `pip install -r`
-# backtracks through hundreds of google-* versions and never finishes within pod
-# startup timeouts. Runtime packages work with the image's google stack; we only
-# need the wheels themselves.
+# The image ships apache-airflow-providers-google (google-cloud-storage 3.x,
+# gcsfs 2026.x). dbt-bigquery declares google-cloud-storage<3.2, which forces
+# a downgrade to gcs 3.1.x. Newer gcsfs requires gcs>=3.9, so any requirements
+# file that pulls dbt-bigquery MUST also cap gcsfs at <2025.1.0 to prevent
+# pip from backtracking through hundreds of google-* versions and blowing
+# past pod startup timeouts.
+#
+# Example requirements.txt for dbt:
+#   gcsfs>=2024.6.0,<2025.1.0
+#   dbt-core==1.9.8
+#   dbt-bigquery==1.9.2
+#
+# Note: dbt-core >=1.9.9 requires protobuf>=6 (incompatible with image's 5.29.6);
+# dbt-core <=1.8 requires protobuf<5 (also incompatible). Pin to 1.9.0–1.9.8.
 set -euo pipefail
 
 REQUIREMENTS_FILE="${1:-/opt/airflow/requirements.txt}"
@@ -27,7 +36,7 @@ if [[ -f "${MARKER_FILE}" ]] && [[ "$(cat "${MARKER_FILE}")" == "${current_hash}
   exit 0
 fi
 
-echo "Installing runtime packages from ${REQUIREMENTS_FILE} (--no-deps)..."
-pip install --no-cache-dir --no-deps -r "${REQUIREMENTS_FILE}"
+echo "Installing runtime packages from ${REQUIREMENTS_FILE}..."
+pip install --no-cache-dir -r "${REQUIREMENTS_FILE}"
 echo "${current_hash}" > "${MARKER_FILE}"
 echo "Runtime package install complete"

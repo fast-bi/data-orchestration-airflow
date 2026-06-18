@@ -30,4 +30,3 @@ docker buildx build . \
   --tag docker.io/4fastbi/data-orchestration-airflow:${airflow_version_short} \
   --platform linux/arm64 \
   --push
-

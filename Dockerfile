@@ -93,7 +93,8 @@ RUN mkdir -p /etc/lsyncd /home/airflow/.local/lib/python3.11/site-packages && \
 # Copy requirements files
 COPY --chown=airflow:root requirements_main.txt requirements_fastbi.txt /home/airflow/
 # Runtime installer: invoked at pod startup against the airflow-config-pypi ConfigMap
-# (default /opt/airflow/requirements.txt) with --no-deps. Not run at build time.
+# (default /opt/airflow/requirements.txt) with full dependency resolution.
+# Not run at build time.
 COPY --chown=airflow:root install-runtime-packages.sh /usr/local/bin/install-runtime-packages.sh
 
 # Create plugins directory and copy package manager plugin

@@ -10,11 +10,19 @@ apache-airflow-providers-snowflake==6.5.2
 connexion[swagger-ui]<3.0
 cryptography==44.0.2
 pyarrow==19.0.1
-opentelemetry-exporter-otlp==1.30.0
-opentelemetry-exporter-otlp-proto-common==1.30.0
-opentelemetry-exporter-otlp-proto-http==1.30.0
-opentelemetry-exporter-otlp-proto-grpc==1.30.0
-opentelemetry-proto==1.30.0
+opentelemetry-exporter-otlp==1.42.1
+opentelemetry-exporter-otlp-proto-common==1.42.1
+opentelemetry-exporter-otlp-proto-http==1.42.1
+opentelemetry-exporter-otlp-proto-grpc==1.42.1
+opentelemetry-proto==1.42.1
+# Bump the rest of the opentelemetry stack to match 1.42.x: earlier
+# 0.51b0 of exporter-prometheus and semantic-conventions pin protobuf<6,
+# which conflicts with dbt-core 1.10.x's protobuf>=6.0 requirement.
+opentelemetry-exporter-prometheus==0.63b1
+opentelemetry-semantic-conventions==0.63b1
+# Airflow 2.11.2 base image ships protobuf 5.29.6 (transitive of opentelemetry).
+# dbt-core 1.10.x requires protobuf>=6.0; pin explicitly to keep pip check green.
+protobuf==6.33.6
 # cncf-kubernetes 10.13.0 requires kubernetes>=35.0.0,<36.0.0 (matches 2.11.2 base).
 kubernetes>=35.0.0,<36.0.0
 
